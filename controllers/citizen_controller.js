@@ -1,4 +1,7 @@
-const OTP_STORE_SCHEMA = require('../models/otp_store');
+const MONGOOSE = require('mongoose');
+
+
+// const OTP_STORE_SCHEMA = require('../models/otp_store');
 const AADHAR_SCHEMA = require('../models/aadhar_model');
 const CITIZEN_SCHEMA = require('../models/citizen/citizen_model');
 
@@ -14,7 +17,89 @@ const PASSWORD_VALIDATOR = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,12
 const EMAIL_VALIDATOR = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 const ONLY_NUMBER_VALIDATOR = new RegExp('^[0-9]+$');
 
+const OTP_GENERATOR = () => {
+    let otp;
+    do {
+        otp = (Math.floor(1000 + Math.random() * 9000)).toString();
+    } while (otp.length != 4);
+    return otp;
+}
 
+// ? Authenticate aadhar number and send OTP
+exports.authenticate_aadhar = (req, res) => {
+    if (!req.body.aadharNumber || typeof req.body.aadharNumber != 'string' || req.body.aadharNumber.trim().length != 12 || !ONLY_NUMBER_VALIDATOR.test(req.body.aadharNumber)) {
+        res.send(res_generator(req.body, true, 'Invalid aadhar number'));
+    } else {
+        const AADHAR = req.body.aadharNumber;
+        AADHAR_SCHEMA.find({ aadharNumber: AADHAR })
+            .then(result => {
+                if (result.length === 0) {
+                    res.send(res_generator(req.body, true, `No record found with ${AADHAR}`));
+                } else {
+                    var ORIGINAL_AADHAR = result[0]._doc;
+                    delete ORIGINAL_AADHAR._id;
+                    delete ORIGINAL_AADHAR.__v;
+                    CITIZEN_SCHEMA.find({ aadharNumber: AADHAR })
+                        .then(result => {
+                            if (result.length === 0) {
+                                const email = decrypt_string(ORIGINAL_AADHAR.email);
+                                const OTP = OTP_GENERATOR();
+                                // console.log(OTP)
+                                send_mail(
+                                    email,
+                                    "OTP verification for Registration at Online Requisition portal - Gujarat",
+                                    `Your One Time Password is : ${OTP}`,
+                                    'Please do not share this OTP.'
+                                )
+                                const ENC_OTP = encrypt_string(OTP);
+                                res.send(res_generator({ otp: ENC_OTP, aadhar: ORIGINAL_AADHAR }, false, 'OTP sent to the linked email with aadhar'));
+                            } else {
+                                res.send(res_generator(req.body, true, "Already registered with this aadhar number"))
+                            }
+                        })
+
+
+                }
+            })
+    }
+}
+exports.verify_otp_for_aadhar = (req, res) => {
+    if (
+        !req.body.otp
+        || !req.body.aadhar
+        || !req.body.clientOtp
+
+        || typeof req.body.otp != 'string'
+        || typeof req.body.clientOtp != 'string'
+        || typeof req.body.aadhar != 'object'
+
+        || !ONLY_NUMBER_VALIDATOR.test(req.body.clientOtp)
+
+        || req.body.clientOtp.trim().length !== 4
+    ) {
+        res.send(res_generator(req.body, true, "Bad request"));
+    } else {
+        const DATA = req.body;
+        const SERVER_OTP = decrypt_string(DATA.otp);
+        if (SERVER_OTP === DATA.clientOtp) {
+            const my_aadhar = {}
+            for (var field in DATA.aadhar) {
+                if (field === 'aadharNumber') {
+                    continue;
+                } else {
+                    // console.log("--------------------------")
+                    // console.log(my_aadhar[field]);
+                    my_aadhar[field] = decrypt_string(DATA.aadhar[field]);
+                    // console.log(my_aadhar[field]);
+
+                }
+            }
+            res.send(res_generator(my_aadhar, false, "Verified"));
+        } else {
+            res.send(res_generator(DATA, true, "Invalid OTP"));
+        }
+    }
+}
 // ? Register a citizen
 exports.register_citizen = (req, res) => {
     if (
@@ -48,58 +133,32 @@ exports.register_citizen = (req, res) => {
         else {
             AADHAR_SCHEMA.find({ aadharNumber: DATA.aadharNumber })
                 .then(result => {
-                    if (result.length == 0) {
+                    if (result.length === 0) {
                         res.send(res_generator(DATA, true, `No record found with ${DATA.aadharNumber}`));
                     } else {
                         // ! Process of registration after finding the citizen in aadhar database
                         CITIZEN_SCHEMA.find({ $or: [{ email: DATA.email }, { aadharNumber: DATA.aadharNumber }] })
                             .then(data => {
                                 if (data.length === 0) {
-                                    let otp;
-                                    do {
-                                        otp = (Math.floor(1000 + Math.random() * 9000)).toString();
-                                    } while (otp.length != 4);
-                                    // ! Store OTP and email to the database
-                                    OTP_STORE_SCHEMA.findOne({ email: DATA.email })
-                                        .then((citizen) => {
-                                            if (citizen == null) {
-                                                const password = bcrypt_password(DATA.password);
-                                                const ENC = {
-                                                    otp,
-                                                    email: DATA.email,
-                                                    aadharNumber: DATA.aadharNumber,
-                                                    password
-                                                };
-                                                const TO_BE_SAVED = new OTP_STORE_SCHEMA(ENC);
-                                                TO_BE_SAVED.save()
-                                                    .then(() => {
-                                                        send_mail(
-                                                            DATA.email,
-                                                            "OTP verification for Registration at Online Requisition portal - Gujarat",
-                                                            `Your One Time Password is : ${otp}`,
-                                                            'Please do not share this OTP.'
-                                                        )
-                                                        res.send(res_generator(DATA.email, false, 'OTP sent for authentication, OTP is valid for 5 minutes only'));
-                                                        setTimeout(() => {
-                                                            // ! Delete OTP from Database after 5 minutes
-                                                            OTP_STORE_SCHEMA.deleteOne({ email: DATA.email })
-                                                                .then(() => {
-                                                                    // console.log('Record deleted')
-                                                                });
-                                                        }, 300000);
-                                                        // 300000
-                                                    })
-                                                    .catch(err => {
-                                                        res.send(res_generator(DATA, true, 'Server side error, Please try again later'));
-                                                        error_printer('At saving the OTP', err);
-                                                    })
-                                            } else {
-                                                res.send(res_generator(DATA, true, "You have already requested an OTP, Please wait for 5 minutes"))
-                                            }
+                                    const CITIZEN = {
+                                        aadharNumber: DATA.aadharNumber,
+                                        email: encrypt_string(DATA.email),
+                                        password: bcrypt_password(DATA.password)
+                                    }
+                                    const TO_BE_SAVED = new CITIZEN_SCHEMA(CITIZEN)
+                                    TO_BE_SAVED.save()
+                                        .then(() => {
+                                            send_mail(
+                                                DATA.email,
+                                                "Registration successful on Online Requisition portal - Gujarat",
+                                                `Now you can use services like issuing birth,death and marriage certificate online.`,
+                                                'Please do not share credentials and if it was not you please reply us to this email'
+                                            )
+                                            res.send(res_generator(DATA.email, false, 'Registration successful'));
                                         })
                                         .catch(err => {
-                                            res.send(res_generator(DATA, true, 'Server side error, Please try again later'));
-                                            error_printer('At finding existing OTP', err);
+                                            error_printer('Saving the new citizen', err);
+                                            res.send(res_generator({ email: DATA.email }, true, "Server side error"));
                                         })
                                 } else {
                                     res.send(res_generator(DATA, true, "Already registered with this aadhar number or email"))
@@ -118,54 +177,6 @@ exports.register_citizen = (req, res) => {
         }
     }
 }
-// ? OTP verification at registration of a citizen
-exports.verify_citizen_otp = (req, res) => {
-    if (
-        !req.body.email
-        || !req.body.otp
-        || typeof req.body.email != 'string'
-        || typeof req.body.otp != 'string'
-        || !EMAIL_VALIDATOR.test(req.body.email)
-        || !ONLY_NUMBER_VALIDATOR.test(req.body.otp)
-    ) {
-        res.send(res_generator(req.body, true, 'Insufficient or Invalid data provided'));
-    } else {
-        const DATA = { email: req.body.email, otp: req.body.otp }
-        OTP_STORE_SCHEMA.findOne({ email: req.body.email })
-            .then((citizen) => {
-                if (citizen == null) {
-                    res.send(res_generator(req.body, true, "Server side error, Please try again"));
-                } else {
-                    if (citizen.otp === DATA.otp) {
-                        const email = encrypt_string(citizen.email);
-                        const new_citizen = {
-                            email,
-                            password: citizen.password,
-                            aadharNumber: citizen.aadharNumber,
-                            appliedFor: [],
-                            drafts: []
-                        };
-                        const TO_BE_SAVED = new CITIZEN_SCHEMA(new_citizen);
-                        TO_BE_SAVED.save()
-                            .then(() => {
-                                res.send(res_generator({ email: req.body.email }, false, "Register successful"))
-                            })
-                            .catch(err => {
-                                res.send(res_generator(req.body, true, "Server side error, Please try again"));
-                                error_printer('Saving the new citizen', err);
-                            })
-                    } else {
-                        res.send(res_generator(DATA, true, "Invalid OTP"));
-                    }
-                }
-            })
-            .catch(err => {
-                res.send(res_generator(req.body, true, "Server side error, Please try again"));
-                error_printer('Finding otp for verification at citizen register', err);
-            })
-    }
-}
-
 
 // ? Login a citizen
 exports.login_citizen = (req, res) => {
@@ -207,5 +218,36 @@ exports.login_citizen = (req, res) => {
                 res.send(res_generator(DATA, true, "Server side error, Please try again"));
                 error_printer('Finding the citizen for login', err);
             });
+    }
+}
+
+
+// ? Citizen Services 
+exports.aadhar_verification = (req, res) => {
+    if (!req.body.aadharNumber || typeof req.body.aadharNumber != 'string' || req.body.aadharNumber.trim().length != 12 || !ONLY_NUMBER_VALIDATOR.test(req.body.aadharNumber)) {
+        res.send(res_generator(req.body, true, 'Invalid aadhar number'));
+    } else {
+        const AADHAR = req.body.aadharNumber;
+        AADHAR_SCHEMA.find({ aadharNumber: AADHAR })
+            .then(result => {
+                if (result.length === 0) {
+                    res.send(res_generator(req.body, true, `No record found with ${AADHAR}`));
+                } else {
+                    var ORIGINAL_AADHAR = result[0]._doc;
+                    delete ORIGINAL_AADHAR._id;
+                    delete ORIGINAL_AADHAR.__v;
+                    const email = decrypt_string(ORIGINAL_AADHAR.email);
+                    const OTP = OTP_GENERATOR();
+                    console.log(OTP)
+                    // send_mail(
+                    //     email,
+                    //     "OTP verification for Registration at Online Requisition portal - Gujarat",
+                    //     `Your One Time Password is : ${OTP}`,
+                    //     'Please do not share this OTP.'
+                    // )
+                    const ENC_OTP = encrypt_string(OTP);
+                    res.send(res_generator({ otp: ENC_OTP, aadhar: ORIGINAL_AADHAR }, false, 'OTP sent to the linked email with aadhar'));
+                }
+            })
     }
 }

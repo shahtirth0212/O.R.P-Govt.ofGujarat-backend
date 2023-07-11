@@ -8,6 +8,7 @@ const CORS = require('cors');
 
 const ADMIN_ROUTES = require('./routes/admin_routes');
 const CITIZEN_ROUTES = require('./routes/citizen_routes');
+const { res_generator } = require("./helpers/response_generator");
 
 const SERVER = EXPRESS();
 SERVER.use(BODY_PARSER.json());
@@ -17,6 +18,10 @@ SERVER.use('/admin', ADMIN_ROUTES);
 SERVER.use('/citizen', CITIZEN_ROUTES);
 
 
+
+SERVER.use("/*", (req, res) => {
+    res.send(res_generator(req.body, true, "404 not found!"));
+});
 
 
 const PORT = process.env.PORT || 5000;

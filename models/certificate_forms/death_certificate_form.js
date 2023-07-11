@@ -10,19 +10,7 @@ const DEATH_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    personGender: {
-        type: String,
-        required: true
-    },
-    personFirstName: {
-        type: String,
-        required: true
-    },
-    personMiddleName: {
-        type: String,
-        required: true
-    },
-    personLastName: {
+    personAadhar: {
         type: String,
         required: true
     },

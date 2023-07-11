@@ -64,6 +64,7 @@ exports.admin_login = (req, res) => {
         }
         ADMIN_MODEL.find({ email: admin.email })
             .then(result => {
+                console.log(result)
                 if (result.length < 1) {
                     res.send(res_generator(req.body, true, 'User does not exist'));
                 } else {

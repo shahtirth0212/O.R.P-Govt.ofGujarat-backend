@@ -32,7 +32,7 @@ const MARRIAGE_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    groomFatherAadhar: {
+    witness1: {
         type: Number,
         required: true
     },
@@ -49,7 +49,7 @@ const MARRIAGE_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    brideFatherAadhar: {
+    witness2: {
         type: Number,
         required: true
     },
