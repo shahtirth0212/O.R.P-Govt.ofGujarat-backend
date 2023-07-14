@@ -7,6 +7,8 @@ const { send_mail } = require('../helpers/services/mail_services');
 
 const AADHAR_MODEL = require("../models/aadhar_model");
 const ADMIN_MODEL = require("../models/admin_model");
+const DISTRICT_MODEL = require("../models/district_model");
+const SLOTS_INFORMATION = require("../models/verification_slots/slots_info_model");
 
 const DISTRICTS = {
     Ahmedabad: 'Ahmedabad',
@@ -190,5 +192,64 @@ exports.new_admin = (req, res) => {
                 error_printer('At Finding admin', err);
                 res.send(res_generator(copy_of_admin, true, 'Server side error, please try again later'));
             })
+    }
+}
+exports.insert_all_districts = (req, res) => {
+    DISTRICT_MODEL.insertMany([
+        { "name": 'Ahmedabad' },
+        { "name": 'Amreli' },
+        { "name": 'Anand' },
+        { "name": 'Aravalli' },
+        { "name": 'Banaskantha' },
+        { "name": 'Bharuch' },
+        { "name": 'Bhavnagar' },
+        { "name": 'Botad' },
+        { "name": 'Chhotaudipur' },
+        { "name": 'Dahod' },
+        { "name": 'Dang' },
+        { "name": 'Devbhumi Dwarka' },
+        { "name": 'Gandhinagar' },
+        { "name": 'Gir Somnath' },
+        { "name": 'Jamnagar' },
+        { "name": 'Junagadh' },
+        { "name": 'Kheda' },
+        { "name": 'Kutch' },
+        { "name": 'Mahisagar' },
+        { "name": 'Mehsana' },
+        { "name": 'Morbi' },
+        { "name": 'Narmada' },
+        { "name": 'Navsari' },
+        { "name": 'Panchmahal' },
+        { "name": 'Patan' },
+        { "name": 'Porbandar' },
+        { "name": 'Rajkot' },
+        { "name": 'Sabarkantha' },
+        { "name": 'Surat' },
+        { "name": 'Surendranagar' },
+        { "name": 'Tapi' },
+        { "name": 'Valsad' },
+        { "name": 'Vadodara' }
+    ])
+        .then(result => {
+            res.send(res_generator(result, false, "Inserted"))
+        })
+}
+
+exports.add_slot_info = async (req, res) => {
+    const DISTRICT = await DISTRICT_MODEL.findOne({ name: req.body.district });
+    const SLOT = await SLOTS_INFORMATION.findOne({ district: DISTRICT._id });
+    const TIMINGS = req.body.timings;
+    if (SLOT) {
+        res.send(res_generator(req.body, true, "Already exists"));
+    } else {
+        const NEW_SLOT =
+            SLOTS_INFORMATION(
+                {
+                    district: DISTRICT._id, birth: TIMINGS.birth,
+                    marriage: TIMINGS.marriage,
+                    death: TIMINGS.death
+                });
+        const SAVED_SLOT = await NEW_SLOT.save();
+        res.send(SAVED_SLOT, false, "Slot saved");
     }
 }

@@ -1,18 +1,22 @@
 const MONGOOSE = require("mongoose");
-const APPLICATION_SCHEMA = MONGOOSE.Schema({
+const APPLIED_CERTIFICATE_SCHEMA = MONGOOSE.Schema({
     certificateId: {
         // Birth Marriage Death
-        type: String,
+        type: MONGOOSE.Types.ObjectId,
         required: true
     },
-    isDraft: {
-        type: Boolean,
+    formId: {
+        // Form id -> death_certificate_form,BirthForm or MarriageForm
+        type: MONGOOSE.Types.ObjectId,
+        required: true
+    },
+    district: {
+        type: MONGOOSE.Types.ObjectId,
         required: true
     },
     certificateNumber: {
         // Number assigned by the authorities
         type: String,
-        required: true,
     },
     issued: {
         type: Boolean,
@@ -24,18 +28,12 @@ const APPLICATION_SCHEMA = MONGOOSE.Schema({
     },
     appliedBy: {
         // Citizin Id
-        type: String,
-        required: true
-    },
-    formId: {
-        // Form id -> death_certificate_form,BirthForm or MarriageForm
-        type: String,
+        type: MONGOOSE.Types.ObjectId,
         required: true
     },
     assignedTo: {
         // Clerk id
-        type: String,
-        required: true
+        type: MONGOOSE.Types.ObjectId,
     },
     holders: {
         // [
@@ -47,4 +45,4 @@ const APPLICATION_SCHEMA = MONGOOSE.Schema({
     }
 });
 
-module.exports = MONGOOSE.model("Application", APPLICATION_SCHEMA);
+module.exports = MONGOOSE.model("AppliedCertificate", APPLIED_CERTIFICATE_SCHEMA);

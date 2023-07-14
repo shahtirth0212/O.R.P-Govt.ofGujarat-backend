@@ -11,7 +11,8 @@ const CITIZEN_ROUTES = require('./routes/citizen_routes');
 const { res_generator } = require("./helpers/response_generator");
 
 const SERVER = EXPRESS();
-SERVER.use(BODY_PARSER.json());
+SERVER.use(BODY_PARSER.json({ limit: '50mb' }));
+SERVER.use(BODY_PARSER.urlencoded({ limit: '50mb', extended: true }));
 SERVER.use(CORS());
 
 SERVER.use('/admin', ADMIN_ROUTES);

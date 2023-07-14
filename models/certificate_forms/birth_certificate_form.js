@@ -3,12 +3,11 @@ const MONGOOSE = require("mongoose");
 const BIRTH_FORM = MONGOOSE.Schema({
     //! ------------------ Child details
     certificateId: {
-        type: String,
+        type: MONGOOSE.Types.ObjectId,
         required: true
     },
     appliedCertificateId: {
-        type: String,
-        required: true
+        type: MONGOOSE.Types.ObjectId,
     },
     childBirthDate: {
         type: Date,
@@ -35,7 +34,7 @@ const BIRTH_FORM = MONGOOSE.Schema({
         required: true
     },
     placeOfBirth: {
-        type: String,
+        type: MONGOOSE.Types.ObjectId,
         required: true
     },
     //! ------------------ Mother's details
@@ -51,10 +50,6 @@ const BIRTH_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    motherAgeAtMarriage: {
-        type: Number,
-        required: true
-    },
     motherAgeAtBirth: {
         type: Number,
         required: true
@@ -63,12 +58,8 @@ const BIRTH_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    motherTotalChildrenAtThisBirth: {
-        type: Number,
-        required: true
-    },
 
-    //! ------------------ Mother's details
+    //! ------------------ Father's details
     fatherAadhar: {
         type: String,
         required: true
@@ -103,7 +94,7 @@ const BIRTH_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    marraigeCertificateDOC: {
+    marriageCertificateDOC: {
         type: String,
         required: true
     },
@@ -114,7 +105,6 @@ const BIRTH_FORM = MONGOOSE.Schema({
     //! ------------------ Issued certificate details
     path: {
         type: String,
-        required: true
     },
 });
 

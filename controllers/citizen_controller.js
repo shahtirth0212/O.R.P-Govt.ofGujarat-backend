@@ -1,9 +1,15 @@
 const MONGOOSE = require('mongoose');
 
-
 // const OTP_STORE_SCHEMA = require('../models/otp_store');
 const AADHAR_SCHEMA = require('../models/aadhar_model');
 const CITIZEN_SCHEMA = require('../models/citizen/citizen_model');
+const BIRTH_FORM_SCHEMA = require("../models/certificate_forms/birth_certificate_form");
+const CERTIFICATES_SCHEMA = require("../models/certificates/certificate_model");
+const APPLIED_CERTIFICATE_SCHEMA = require("../models/certificates/applied_certificates");
+const DISTRICTS_SCHEMA = require("../models/district_model");
+const SLOTS_INFORMATION = require("../models/verification_slots/slots_info_model");
+const SLOTS_SCHEMA = require("../models/verification_slots/slots_model");
+
 
 const { res_generator } = require('../helpers/response_generator');
 const { error_printer } = require('../helpers/error_printer');
@@ -85,7 +91,7 @@ exports.verify_otp_for_aadhar = (req, res) => {
             const my_aadhar = {}
             for (var field in DATA.aadhar) {
                 if (field === 'aadharNumber') {
-                    continue;
+                    my_aadhar[field] = DATA.aadhar[field];
                 } else {
                     // console.log("--------------------------")
                     // console.log(my_aadhar[field]);
@@ -220,8 +226,99 @@ exports.login_citizen = (req, res) => {
             });
     }
 }
+// ? Submit birth Form
+// ! Can throw error
+exports.submit_birth_form = async (req, res) => {
+    const DATA = req.body;
+    if (
+        !DATA.childBirthDate ||
+        !DATA.childGender ||
+        !DATA.childFirstName ||
+        !DATA.childMiddleName ||
+        !DATA.childLastName ||
+        !DATA.childWeight ||
+        !DATA.placeOfBirth ||
+        !DATA.motherAadhar ||
+        !DATA.motherReligion ||
+        !DATA.motherLiteracy ||
+        !DATA.motherAgeAtBirth ||
+        !DATA.motherOccupation ||
+        !DATA.fatherAadhar ||
+        !DATA.fatherReligion ||
+        !DATA.fatherLiteracy ||
+        !DATA.fatherOccupation ||
+        !DATA.postDeliveryTreatment ||
+        !DATA.deliveryType ||
+        !DATA.pregnancyDurationWeeks ||
+        !DATA.permanentAddProofDOC ||
+        !DATA.marriageCertificateDOC ||
+        !DATA.proofOfBirthDOC ||
+        !DATA.appliedBy
+    ) {
+        res.send(res_generator(req.body, true, "Insufficient data provided"));
+    } else {
+        let FORM = req.body;
+        let BIRTH_FORM = {};
+        const DISTRICT = await DISTRICTS_SCHEMA.findOne({ name: FORM.placeOfBirth });
+        // FORM.placeOfBirth = new MONGOOSE.Types.ObjectId(DISTRICT._id)
+        FORM.placeOfBirth = DISTRICT._id;
 
-
+        CERTIFICATES_SCHEMA.findOne({ certi: 0 })
+            .then(result => {
+                BIRTH_FORM = result;
+                FORM.certificateId = BIRTH_FORM._id;
+                FORM.path = "";
+                const TO_BE_SAVED = new BIRTH_FORM_SCHEMA(FORM);
+                let SAVED_FORM;
+                TO_BE_SAVED.save()
+                    .then(result => {
+                        SAVED_FORM = result;
+                        const APPLIED_CERTIFICATE = {
+                            certificateId: BIRTH_FORM._id,
+                            formId: SAVED_FORM._id,
+                            district: DISTRICT._id,
+                            certificateNumber: "",
+                            issued: false,
+                            verified: false,
+                            appliedBy: FORM.appliedBy,
+                            holders: [{ firstName: SAVED_FORM.childFirstName, middleName: SAVED_FORM.childMiddleName, lastName: SAVED_FORM.childLastName }]
+                        }
+                        const TO_BE_SAVED = APPLIED_CERTIFICATE_SCHEMA(APPLIED_CERTIFICATE);
+                        TO_BE_SAVED.save()
+                            .then(result => {
+                                const APPLIED_CERTIFICATE = result;
+                                BIRTH_FORM_SCHEMA.updateOne({ _id: SAVED_FORM._id }, { $set: { appliedCertificateId: APPLIED_CERTIFICATE._id } })
+                                    .then(result => {
+                                        CITIZEN_SCHEMA.updateOne({ _id: FORM.appliedBy }, { $push: { appliedFor: APPLIED_CERTIFICATE._id } })
+                                            .then(() => {
+                                                res.send(res_generator({ appliedFor: APPLIED_CERTIFICATE._id }, false, "Form Submitted"))
+                                            })
+                                            .catch(err => {
+                                                console.log(err)
+                                                res.send(res_generator(req.body, true, "Server side error"));
+                                            })
+                                    })
+                                    .catch(err => {
+                                        console.log(err)
+                                        res.send(res_generator(req.body, true, "Server side error"));
+                                    })
+                            })
+                            .catch(err => {
+                                console.log(err)
+                                res.send(res_generator(req.body, true, "Server side error"));
+                            })
+                    })
+                    .catch(err => {
+                        console.log(err)
+                        res.send(res_generator(req.body, true, "Server side error"));
+                    });
+            })
+            .catch(err => {
+                res.send(res_generator(req.body, true, "Server side error"));
+                console.log(err)
+            })
+    }
+}
 // ? Citizen Services 
 exports.aadhar_verification = (req, res) => {
     if (!req.body.aadharNumber || typeof req.body.aadharNumber != 'string' || req.body.aadharNumber.trim().length != 12 || !ONLY_NUMBER_VALIDATOR.test(req.body.aadharNumber)) {
@@ -251,3 +348,103 @@ exports.aadhar_verification = (req, res) => {
             })
     }
 }
+
+exports.get_free_slots = async (req, res) => {
+    const SERVICE_NUMBER = parseInt(req.params.serviceNumber);
+    const DISTRICT = req.params.district;
+
+    const TODAY = new Date();
+    const LAST_DAY = new Date(TODAY.getFullYear(), TODAY.getMonth() + 1, 0);
+    let TOMORROW = new Date();
+    TOMORROW.setDate(TOMORROW.getDate() + 1);
+    let tempDate = new Date(TOMORROW);
+
+    const AVAILABLE_SLOTS = [];
+
+    let DATES = [];
+    while (tempDate <= LAST_DAY) {
+        DATES.push(new Date(tempDate))
+        tempDate.setDate(tempDate.getDate() + 1);
+    }
+    // let SERVICE;
+    let DISTRICT_ID;
+    let CERTIFICATE_ID;
+    for (var i = 0; i < 3; i++) {
+        if (i === SERVICE_NUMBER) {
+            const certi = await CERTIFICATES_SCHEMA.findOne({ certi: i });
+            CERTIFICATE_ID = certi._id;
+        }
+    }
+    const d = await DISTRICTS_SCHEMA.findOne({ name: DISTRICT });
+    DISTRICT_ID = d._id;
+    const TIMINGS = await SLOTS_INFORMATION.findOne({ district: DISTRICT_ID });
+    let ALL_SLOTS;
+    switch (SERVICE_NUMBER) {
+        case 0:
+            ALL_SLOTS = TIMINGS.birth;
+            break;
+        case 1:
+            ALL_SLOTS = TIMINGS.marriage;
+            break;
+        case 2:
+            ALL_SLOTS = TIMINGS.death;
+            break;
+    }
+    var ALL_BOOKED_SLOTS;
+    SLOTS_SCHEMA.find({ district: DISTRICT_ID, certificate: CERTIFICATE_ID })
+        .then(result => {
+            ALL_BOOKED_SLOTS = result;
+            let s0 = s1 = s2 = 0;
+            DATES.forEach(date => {
+                if (date.getDay() == 0 || date.getDay() == 6) {
+                    // Do nothing
+                } else {
+                    const booked_on_date = ALL_BOOKED_SLOTS.filter(bookedSlot => {
+                        return bookedSlot.date.getDate() === date.getDate() && bookedSlot.date.getMonth() === date.getMonth() && bookedSlot.date.getFullYear() === date.getFullYear();
+                    });
+                    booked_on_date.forEach(booked => {
+                        if (booked.timing === 's0')
+                            s0++;
+                        else if (booked.timing === 's1')
+                            s1++;
+                        else if (booked.timing === 's2')
+                            s2++;
+                    })
+                    if (s0 < ALL_SLOTS.s0.max)
+                        AVAILABLE_SLOTS.push({ date, timing: 's0', hours: ALL_SLOTS.s0.time });
+                    else if (s1 < ALL_SLOTS.s1.max)
+                        AVAILABLE_SLOTS.push({ date, timing: 's1', hours: ALL_SLOTS.s1.time });
+                    else if (s2 < ALL_SLOTS.s2.max)
+                        AVAILABLE_SLOTS.push({ date, timing: 's2', hours: ALL_SLOTS.s2.time });
+
+                    s0 = s1 = s2 = 0;
+                }
+            });
+            res.send(res_generator({ slots: AVAILABLE_SLOTS }, false, "Slots found!"));
+        })
+        .catch(err => {
+            console.log(err)
+        })
+    // console.log(AVAILABLE_SLOTS);
+}
+exports.get_applied_data = async (req, res) => {
+    if (
+        !req.body.citizenId
+    ) {
+        res.send(res_generator(req.body, true, "Insufficient Data provided"));
+    } else {
+        let FINAL = [];
+        const ID = new MONGOOSE.Types.ObjectId(req.body.citizenId);
+        const DATA = await APPLIED_CERTIFICATE_SCHEMA.find({ appliedBy: ID });
+        for (let i = 0; i < DATA.length; i++) {
+            const result = await SLOTS_SCHEMA.findOne({ appliedCertificateId: DATA._id })
+            if (result) {
+                FINAL.push({ applied: DATA[i], slot: result })
+            } else {
+                FINAL.push({ applied: DATA[i], slot: null })
+            }
+        }
+        res.send(res_generator({ appliedData: FINAL }, false, "Data fetched Successfully"));
+    }
+}
+

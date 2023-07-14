@@ -22,10 +22,6 @@ const CITIZEN_SCHEMA = MONGOOSE.Schema({
         // ]
         type: Array,
         required: true
-    },
-    drafts: {
-        type: Array,
-        required: true
     }
 });
 module.exports = MONGOOSE.model("Citizen", CITIZEN_SCHEMA);

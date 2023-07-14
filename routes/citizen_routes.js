@@ -13,9 +13,8 @@ ROUTER.post('/verify-otp-for-aadhar', CITIZEN_CTRL.verify_otp_for_aadhar);
 ROUTER.post('/login', CITIZEN_CTRL.login_citizen);
 // ! Services Routes
 ROUTER.post('/services-aadhar-verification', CITIZEN_CTRL.aadhar_verification);
-
-
-
-
+ROUTER.post("/submit-birth-form", CITIZEN_CTRL.submit_birth_form);
+ROUTER.get('/get-free-slots/:serviceNumber/:district', CITIZEN_CTRL.get_free_slots);
+ROUTER.post("/get-applied-data", CITIZEN_CTRL.get_applied_data);
 module.exports = ROUTER;
 
