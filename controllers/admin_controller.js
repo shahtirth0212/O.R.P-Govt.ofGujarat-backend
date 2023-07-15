@@ -237,19 +237,23 @@ exports.insert_all_districts = (req, res) => {
 
 exports.add_slot_info = async (req, res) => {
     const DISTRICT = await DISTRICT_MODEL.findOne({ name: req.body.district });
-    const SLOT = await SLOTS_INFORMATION.findOne({ district: DISTRICT._id });
-    const TIMINGS = req.body.timings;
-    if (SLOT) {
-        res.send(res_generator(req.body, true, "Already exists"));
+    if (!DISTRICT) {
+        res.send(res_generator(req.body, true, "Not found"));
     } else {
-        const NEW_SLOT =
-            SLOTS_INFORMATION(
-                {
-                    district: DISTRICT._id, birth: TIMINGS.birth,
-                    marriage: TIMINGS.marriage,
-                    death: TIMINGS.death
-                });
-        const SAVED_SLOT = await NEW_SLOT.save();
-        res.send(SAVED_SLOT, false, "Slot saved");
+        const SLOT = await SLOTS_INFORMATION.findOne({ district: DISTRICT._id });
+        const TIMINGS = req.body.timings;
+        if (SLOT) {
+            res.send(res_generator(req.body, true, "Already exists"));
+        } else {
+            const NEW_SLOT =
+                SLOTS_INFORMATION(
+                    {
+                        district: DISTRICT._id, birth: TIMINGS.birth,
+                        marriage: TIMINGS.marriage,
+                        death: TIMINGS.death
+                    });
+            const SAVED_SLOT = await NEW_SLOT.save();
+            res.send(res_generator(SAVED_SLOT, false, "Slot saved"));
+        }
     }
 }

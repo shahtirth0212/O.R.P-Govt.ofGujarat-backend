@@ -391,7 +391,7 @@ exports.get_free_slots = async (req, res) => {
             break;
     }
     var ALL_BOOKED_SLOTS;
-    SLOTS_SCHEMA.find({ district: DISTRICT_ID, certificate: CERTIFICATE_ID })
+    SLOTS_SCHEMA.find({ $and: [{ district: DISTRICT_ID }, { certificateId: CERTIFICATE_ID }], })
         .then(result => {
             ALL_BOOKED_SLOTS = result;
             let s0 = s1 = s2 = 0;
@@ -403,6 +403,8 @@ exports.get_free_slots = async (req, res) => {
                         return bookedSlot.date.getDate() === date.getDate() && bookedSlot.date.getMonth() === date.getMonth() && bookedSlot.date.getFullYear() === date.getFullYear();
                     });
                     booked_on_date.forEach(booked => {
+                        console.log("Printing slots")
+                        console.log(booked)
                         if (booked.timing === 's0')
                             s0++;
                         else if (booked.timing === 's1')
@@ -420,6 +422,7 @@ exports.get_free_slots = async (req, res) => {
                     s0 = s1 = s2 = 0;
                 }
             });
+            // console.log(AVAILABLE_SLOTS)
             res.send(res_generator({ slots: AVAILABLE_SLOTS }, false, "Slots found!"));
         })
         .catch(err => {
@@ -437,14 +440,66 @@ exports.get_applied_data = async (req, res) => {
         const ID = new MONGOOSE.Types.ObjectId(req.body.citizenId);
         const DATA = await APPLIED_CERTIFICATE_SCHEMA.find({ appliedBy: ID });
         for (let i = 0; i < DATA.length; i++) {
-            const result = await SLOTS_SCHEMA.findOne({ appliedCertificateId: DATA._id })
+            const SERVICE = await CERTIFICATES_SCHEMA.findOne({ _id: DATA[i].certificateId });
+            let FORM;
+            if (SERVICE.certi === 0) { FORM = "Birth Form" }
+            else if (SERVICE.certi === 1) { FORM = "Marriage Form" }
+            else if (SERVICE.certi === 2) { FORM = "Death Form" }
+            const result = await SLOTS_SCHEMA.findOne({ appliedCertificateId: DATA[i]._id });
             if (result) {
-                FINAL.push({ applied: DATA[i], slot: result })
+                const slotInfo = await SLOTS_INFORMATION.findOne({ district: result.district });
+                let timing;
+                if (SERVICE.certi === 0) { timing = slotInfo.birth }
+                else if (SERVICE.certi === 1) { timing = slotInfo.marriage }
+                else if (SERVICE.certi === 2) { timing = slotInfo.death }
+                FINAL.push({ applied: DATA[i], slot: result, hours: timing[result.timing].time, form: FORM })
             } else {
-                FINAL.push({ applied: DATA[i], slot: null })
+                FINAL.push({ applied: DATA[i], slot: null, form: FORM })
             }
         }
         res.send(res_generator({ appliedData: FINAL }, false, "Data fetched Successfully"));
     }
 }
-
+exports.get_district_certificate = async (req, res) => {
+    if (
+        !req.body.district
+        || !req.body.certificate
+    ) {
+        res.send(res_generator(req.body, true, "Invalid data"));
+    } else {
+        const DISTRICT = await DISTRICTS_SCHEMA.findOne({ _id: new MONGOOSE.Types.ObjectId(req.body.district) });
+        const CERTIFICATE = await CERTIFICATES_SCHEMA.findOne({ _id: new MONGOOSE.Types.ObjectId(req.body.certificate) });
+        const data = { district: DISTRICT.name, service: CERTIFICATE.certi };
+        if (DISTRICT && CERTIFICATE) {
+            res.send(res_generator(data, false, "Fetched data"));
+        } else {
+            res.send(res_generator(req.body, true, "Could not find data"));
+        }
+    }
+}
+exports.book_slot = async (req, res) => {
+    if (
+        !req.body.district
+        || !req.body.service
+        || !req.body.slot
+        || !req.body.appliedId
+    ) {
+        res.send(res_generator(req.body, true, "Invalid data"));
+    } else {
+        const DISTRICT = await DISTRICTS_SCHEMA.findOne({ name: req.body.district });
+        const CERTIFICATE = await CERTIFICATES_SCHEMA.findOne({ certi: parseInt(req.body.service) });
+        const SLOT_DATE = new Date(req.body.slot.date);
+        const SLOT_TIMING = req.body.slot.timing;
+        const TO_BE_SAVED = SLOTS_SCHEMA(
+            {
+                district: DISTRICT._id,
+                certificateId: CERTIFICATE._id,
+                date: SLOT_DATE,
+                timing: SLOT_TIMING,
+                appliedCertificateId: new MONGOOSE.Types.ObjectId(req.body.appliedId),
+            }
+        );
+        const SAVED = await TO_BE_SAVED.save();
+        res.send(res_generator(SAVED, false, "Booked"));
+    }
+}

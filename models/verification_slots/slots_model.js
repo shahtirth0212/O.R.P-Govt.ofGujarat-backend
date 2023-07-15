@@ -23,7 +23,6 @@ const SLOTS_SCHEMA = MONGOOSE.Schema({
     },
     assignedTo: {
         type: MONGOOSE.Types.ObjectId,
-        required: true
     }
 
 });

@@ -1,7 +1,7 @@
 const MONGOOSE = require("mongoose");
 const CERTIFICATE_SCHEMA = MONGOOSE.Schema({
-    name: {
-        type: String,
+    certi: {
+        type: Number,
         required: true
     }
 });

@@ -14,6 +14,10 @@ const APPLIED_CERTIFICATE_SCHEMA = MONGOOSE.Schema({
         type: MONGOOSE.Types.ObjectId,
         required: true
     },
+    // slotId: {
+    //     type: MONGOOSE.Types.ObjectId,
+    //     required: true
+    // },
     certificateNumber: {
         // Number assigned by the authorities
         type: String,
