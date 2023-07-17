@@ -9,7 +9,8 @@ const APPLIED_CERTIFICATE_SCHEMA = require("../models/certificates/applied_certi
 const DISTRICTS_SCHEMA = require("../models/district_model");
 const SLOTS_INFORMATION = require("../models/verification_slots/slots_info_model");
 const SLOTS_SCHEMA = require("../models/verification_slots/slots_model");
-
+const MARRIAGE_FORM_SCHEMA = require("../models/certificate_forms/marriage_certificate_form");
+const DEATH_SCHEMA = require("../models/certificate_forms/death_certificate_form");
 
 const { res_generator } = require('../helpers/response_generator');
 const { error_printer } = require('../helpers/error_printer');
@@ -316,6 +317,224 @@ exports.submit_birth_form = async (req, res) => {
             .catch(err => {
                 res.send(res_generator(req.body, true, "Server side error"));
                 console.log(err)
+            })
+    }
+}
+// ? Submit Marriage Form
+// ! Can throw error
+exports.submit_marriage_form = async (req, res) => {
+    const DATA = req.body;
+    if (!DATA.dateOfMarriage ||
+        !DATA.placeOfMarriage ||
+        !DATA.district ||
+
+        !DATA.husbandAadhar ||
+        !DATA.husbandName ||
+        !DATA.husbandReligion ||
+        !DATA.husbandStatus ||
+        !DATA.husbandBirth ||
+        !DATA.husbandSign ||
+
+        !DATA.wifeAadhar ||
+        !DATA.wifeName ||
+        !DATA.wifeReligion ||
+        !DATA.wifeStatus ||
+        !DATA.wifeBirth ||
+        !DATA.wifeSign ||
+
+        !DATA.witness1FullName ||
+        !DATA.witness1Address ||
+        !DATA.witness1ID ||
+        !DATA.witness1Sign ||
+
+        !DATA.witness2FullName ||
+        !DATA.witness2Address ||
+        !DATA.witness2ID ||
+        !DATA.witness2Sign ||
+
+        !DATA.priestSign ||
+        !DATA.marriagePhoto1 ||
+        !DATA.marriagePhoto2 ||
+        !DATA.appliedBy
+    ) {
+        res.send(res_generator(req.body, true, "Insufficient data provided"));
+    } else {
+        const DATA = req.body;
+        let FORM = {
+            dateOfMarriage: DATA.dateOfMarriage,
+            placeOfMarriage: DATA.placeOfMarriage,
+            district: DATA.district,
+            husbandAadhar: DATA.husbandAadhar,
+            husbandReligion: DATA.husbandReligion,
+            husbandStatus: DATA.husbandStatus,
+            husbandBirth: DATA.husbandBirth,
+            husbandSign: DATA.husbandSign,
+            wifeAadhar: DATA.wifeAadhar,
+            wifeReligion: DATA.wifeReligion,
+            wifeStatus: DATA.wifeStatus,
+            wifeBirth: DATA.wifeBirth,
+            wifeSign: DATA.wifeSign,
+            witness1FullName: DATA.witness1FullName,
+            witness1Address: DATA.witness1Address,
+            witness1ID: DATA.witness1ID,
+            witness1Sign: DATA.witness1Sign,
+            witness2FullName: DATA.witness2FullName,
+            witness2Address: DATA.witness2Address,
+            witness2ID: DATA.witness2ID,
+            witness2Sign: DATA.witness2Sign,
+            priestSign: DATA.priestSign,
+            marriagePhoto1: DATA.marriagePhoto1,
+            marriagePhoto2: DATA.marriagePhoto2,
+            appliedBy: DATA.appliedBy,
+            path: "",
+        };
+        let MARRIAGE_FORM = {};
+        const DISTRICT = await DISTRICTS_SCHEMA.findOne({ name: DATA.district });
+        // FORM.placeOfBirth = new MONGOOSE.Types.ObjectId(DISTRICT._id)
+        FORM.district = DISTRICT._id;
+
+        CERTIFICATES_SCHEMA.findOne({ certi: 1 })
+            .then(result => {
+                MARRIAGE_FORM = result;
+                FORM.certificateId = MARRIAGE_FORM._id;
+                const TO_BE_SAVED = new MARRIAGE_FORM_SCHEMA(FORM);
+                let SAVED_FORM;
+                TO_BE_SAVED.save()
+                    .then(result => {
+                        SAVED_FORM = result;
+                        const APPLIED_CERTIFICATE = {
+                            certificateId: MARRIAGE_FORM._id,
+                            formId: SAVED_FORM._id,
+                            district: DISTRICT._id,
+                            certificateNumber: "",
+                            issued: false,
+                            verified: false,
+                            appliedBy: FORM.appliedBy,
+                            holders: [{ firstName: `${DATA.husbandName}` }, { name: `${DATA.wifeName}` }]
+                        }
+                        const TO_BE_SAVED = APPLIED_CERTIFICATE_SCHEMA(APPLIED_CERTIFICATE);
+                        TO_BE_SAVED.save()
+                            .then(result => {
+                                const APPLIED_CERTIFICATE = result;
+                                MARRIAGE_FORM_SCHEMA.updateOne({ _id: SAVED_FORM._id }, { $set: { appliedCertificateId: APPLIED_CERTIFICATE._id } })
+                                    .then(result => {
+                                        CITIZEN_SCHEMA.updateOne({ _id: FORM.appliedBy }, { $push: { appliedFor: APPLIED_CERTIFICATE._id } })
+                                            .then(() => {
+                                                res.send(res_generator({ appliedFor: APPLIED_CERTIFICATE._id }, false, "Form Submitted"))
+                                            })
+                                            .catch(err => {
+                                                console.log(err)
+                                                res.send(res_generator(req.body, true, "Server side error"));
+                                            })
+                                    })
+                                    .catch(err => {
+                                        console.log(err)
+                                        res.send(res_generator(req.body, true, "Server side error"));
+                                    })
+                            }).catch(err => {
+                                console.log(err)
+                                res.send(res_generator(req.body, true, "Server side error"));
+                            })
+                    }).catch(err => {
+                        console.log(err)
+                        res.send(res_generator(req.body, true, "Server side error"));
+                    })
+            }).catch(err => {
+                console.log(err)
+                res.send(res_generator(req.body, true, "Server side error"));
+            })
+    }
+}
+// ? Submit Death Form
+// ! Can throw error
+exports.submit_death_form = async (req, res) => {
+    const DATA = req.body;
+    if (
+        !DATA.dateOfDeath ||
+        !DATA.placeOfDeath ||
+        !DATA.district ||
+
+        !DATA.personAadhar ||
+        !DATA.personName ||
+        !DATA.deathType ||
+        !DATA.deathReason ||
+
+        !DATA.fillerAadhar ||
+        !DATA.relation ||
+
+        !DATA.hospitalDeclaration ||
+        !DATA.crematoriumDeclaration ||
+        !DATA.appliedBy
+    ) {
+        res.send(res_generator(req.body, true, "Insufficient data provided"));
+    } else {
+        const DATA = req.body;
+        let FORM = {
+            dateOfDeath: DATA.dateOfDeath,
+            placeOfDeath: DATA.placeOfDeath,
+            district: DATA.district,
+            personAadhar: DATA.personAadhar,
+            personName: DATA.personName,
+            deathType: DATA.deathType,
+            deathReason: DATA.deathReason,
+            fillerAadhar: DATA.fillerAadhar,
+            relation: DATA.relation,
+            hospitalDeclaration: DATA.hospitalDeclaration,
+            crematoriumDeclaration: DATA.crematoriumDeclaration,
+            path: ""
+        };
+        let DEATH_FORM = {};
+        const DISTRICT = await DISTRICTS_SCHEMA.findOne({ name: DATA.district });
+        // FORM.placeOfBirth = new MONGOOSE.Types.ObjectId(DISTRICT._id)
+        FORM.district = DISTRICT._id;
+
+        CERTIFICATES_SCHEMA.findOne({ certi: 2 })
+            .then(result => {
+                DEATH_FORM = result;
+                FORM.certificateId = DEATH_FORM._id;
+                const TO_BE_SAVED = new DEATH_SCHEMA(FORM);
+                let SAVED_FORM;
+                TO_BE_SAVED.save()
+                    .then(result => {
+                        SAVED_FORM = result;
+                        const APPLIED_CERTIFICATE = {
+                            certificateId: DEATH_FORM._id,
+                            formId: SAVED_FORM._id,
+                            district: DISTRICT._id,
+                            certificateNumber: "",
+                            issued: false,
+                            verified: false,
+                            appliedBy: DATA.appliedBy,
+                            holders: [{ firstName: `${DATA.personName}` }]
+                        }
+                        const TO_BE_SAVED = APPLIED_CERTIFICATE_SCHEMA(APPLIED_CERTIFICATE);
+                        TO_BE_SAVED.save()
+                            .then(result => {
+                                const APPLIED_CERTIFICATE = result;
+                                DEATH_SCHEMA.updateOne({ _id: SAVED_FORM._id }, { $set: { appliedCertificateId: APPLIED_CERTIFICATE._id } })
+                                    .then(result => {
+                                        CITIZEN_SCHEMA.updateOne({ _id: DATA.appliedBy }, { $push: { appliedFor: APPLIED_CERTIFICATE._id } })
+                                            .then(result => {
+                                                res.send(res_generator({ appliedFor: APPLIED_CERTIFICATE._id }, false, "Form Submitted"))
+                                            }).catch(err => {
+                                                console.log(err)
+                                                res.send(res_generator(req.body, true, "Server side error"));
+                                            })
+                                    }).catch(err => {
+                                        console.log(err)
+                                        res.send(res_generator(req.body, true, "Server side error"));
+                                    })
+                            }).catch(err => {
+                                console.log(err)
+                                res.send(res_generator(req.body, true, "Server side error"));
+                            })
+                    }).catch(err => {
+                        console.log(err)
+                        res.send(res_generator(req.body, true, "Server side error"));
+                    })
+            }).catch(err => {
+                console.log(err)
+                res.send(res_generator(req.body, true, "Server side error"));
             })
     }
 }

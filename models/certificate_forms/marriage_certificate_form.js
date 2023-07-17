@@ -4,12 +4,11 @@ const MARRIAGE_FORM = MONGOOSE.Schema({
     //! ------------------ Certificate details
     certificateId: {
         // Birth Marriage Death
-        type: String,
+        type: MONGOOSE.Types.ObjectId,
         required: true
     },
     appliedCertificateId: {
-        type: String,
-        required: true
+        type: MONGOOSE.Types.ObjectId,
     },
     dateOfMarriage: {
         type: Date,
@@ -19,73 +18,105 @@ const MARRIAGE_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    //! ------------------ Groom's details
-    groomAadhar: {
+    district: {
+        type: MONGOOSE.Types.ObjectId,
+        required: true
+    },
+    //! ------------------ Husband's details
+    husbandAadhar: {
         type: String,
         required: true
     },
-    groomReligion: {
+    husbandReligion: {
         type: String,
         required: true
     },
-    groomStatusAtMarriage: {
+    husbandStatus: {
         type: String,
         required: true
     },
-    witness1: {
-        type: Number,
-        required: true
-    },
-    //! ------------------ Bride's details
-    brideAadhar: {
+    // Husband Documents
+    husbandBirth: {
         type: String,
         required: true
     },
-    brideReligion: {
+    husbandSign: {
         type: String,
         required: true
     },
-    brideStatusAtMarriage: {
+
+    //! ------------------ Wife's details
+    wifeAadhar: {
         type: String,
         required: true
     },
-    witness2: {
-        type: Number,
-        required: true
-    },
-    //! ------------------ Documents
-    groomSignDOC: {
+    wifeReligion: {
         type: String,
         required: true
     },
-    brideSignDOC: {
+    wifeStatus: {
         type: String,
         required: true
     },
-    priestSignDOC: {
+    // Wife Documents
+    wifeBirth: {
         type: String,
         required: true
     },
-    groomBirthCertiDOC: {
+    wifeSign: {
         type: String,
         required: true
     },
-    brideBirthCertiDOC: {
+    //! ------------------ Witness 1
+    witness1FullName: {
         type: String,
         required: true
     },
-    marriagePhotosDOC: {
-        // [
-        //     base64Image...
-        //     base64Image...
-        // ]
-        type: Array,
+    witness1Address: {
+        type: String,
+        required: true
+    },
+    witness1ID: {
+        type: String,
+        required: true
+    },
+    witness1Sign: {
+        type: String,
+        required: true
+    },
+    //! ------------------ Witness 2
+    witness2FullName: {
+        type: String,
+        required: true
+    },
+    witness2Address: {
+        type: String,
+        required: true
+    },
+    witness2ID: {
+        type: String,
+        required: true
+    },
+    witness2Sign: {
+        type: String,
+        required: true
+    },
+    // ! --------------------- Priest sign and marriage photo
+    priestSign: {
+        type: String,
+        required: true
+    },
+    marriagePhoto1: {
+        type: String,
+        required: true
+    },
+    marriagePhoto2: {
+        type: String,
         required: true
     },
     //! ------------------ Issued certificate details
     path: {
         type: String,
-        required: true
     },
 });
 

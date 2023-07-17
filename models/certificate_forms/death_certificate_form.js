@@ -3,18 +3,30 @@ const MONGOOSE = require("mongoose");
 const DEATH_FORM = MONGOOSE.Schema({
     //! ------------------ Deceased person details
     certificateId: {
-        type: String,
+        type: MONGOOSE.Types.ObjectId,
         required: true
     },
     appliedCertificateId: {
+        type: MONGOOSE.Types.ObjectId,
+    },
+    dateOfDeath: {
+        type: Date,
+        required: true
+    },
+    placeOfDeath: {
         type: String,
         required: true
     },
+    district: {
+        type: MONGOOSE.Types.ObjectId,
+        required: true
+    },
+
     personAadhar: {
         type: String,
         required: true
     },
-    placeOfDeath: {
+    personName: {
         type: String,
         required: true
     },
@@ -22,7 +34,7 @@ const DEATH_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    reasonOfDeath: {
+    deathReason: {
         type: String,
         required: true
     },
@@ -31,24 +43,22 @@ const DEATH_FORM = MONGOOSE.Schema({
         type: String,
         required: true
     },
-    relationToThePerson: {
+    relation: {
         type: String,
         required: true
     },
     //! ------------------ Other details
-    hospitalName: {
+    hospitalDeclaration: {
         type: String,
         required: true
     },
-    // ! Documents
-    deathDeclarationDOC: {
+    crematoriumDeclaration: {
         type: String,
         required: true
     },
     //! ------------------ Issued certificate details
     path: {
         type: String,
-        required: true
     },
 });
 
