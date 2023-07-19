@@ -35,10 +35,6 @@ const APPLIED_CERTIFICATE_SCHEMA = MONGOOSE.Schema({
         type: MONGOOSE.Types.ObjectId,
         required: true
     },
-    assignedTo: {
-        // Clerk id
-        type: MONGOOSE.Types.ObjectId,
-    },
     holders: {
         // [
         //     { name: abc, aadhar: 1234 },

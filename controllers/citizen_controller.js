@@ -2,15 +2,16 @@ const MONGOOSE = require('mongoose');
 
 // const OTP_STORE_SCHEMA = require('../models/otp_store');
 const AADHAR_SCHEMA = require('../models/aadhar_model');
+const DISTRICTS_SCHEMA = require("../models/district_model");
 const CITIZEN_SCHEMA = require('../models/citizen/citizen_model');
 const BIRTH_FORM_SCHEMA = require("../models/certificate_forms/birth_certificate_form");
 const CERTIFICATES_SCHEMA = require("../models/certificates/certificate_model");
 const APPLIED_CERTIFICATE_SCHEMA = require("../models/certificates/applied_certificates");
-const DISTRICTS_SCHEMA = require("../models/district_model");
 const SLOTS_INFORMATION = require("../models/verification_slots/slots_info_model");
 const SLOTS_SCHEMA = require("../models/verification_slots/slots_model");
 const MARRIAGE_FORM_SCHEMA = require("../models/certificate_forms/marriage_certificate_form");
 const DEATH_SCHEMA = require("../models/certificate_forms/death_certificate_form");
+const CLERK_SCHEMA = require("../models/authorities/clerk_model");
 
 const { res_generator } = require('../helpers/response_generator');
 const { error_printer } = require('../helpers/error_printer');
@@ -32,7 +33,7 @@ const OTP_GENERATOR = () => {
     return otp;
 }
 
-// ? Authenticate aadhar number and send OTP
+// ? Authenticate aadhar number and send OTP for citizen and clerk registration
 exports.authenticate_aadhar = (req, res) => {
     if (!req.body.aadharNumber || typeof req.body.aadharNumber != 'string' || req.body.aadharNumber.trim().length != 12 || !ONLY_NUMBER_VALIDATOR.test(req.body.aadharNumber)) {
         res.send(res_generator(req.body, true, 'Invalid aadhar number'));
@@ -46,26 +47,45 @@ exports.authenticate_aadhar = (req, res) => {
                     var ORIGINAL_AADHAR = result[0]._doc;
                     delete ORIGINAL_AADHAR._id;
                     delete ORIGINAL_AADHAR.__v;
-                    CITIZEN_SCHEMA.find({ aadharNumber: AADHAR })
-                        .then(result => {
-                            if (result.length === 0) {
-                                const email = decrypt_string(ORIGINAL_AADHAR.email);
-                                const OTP = OTP_GENERATOR();
-                                // console.log(OTP)
-                                send_mail(
-                                    email,
-                                    "OTP verification for Registration at Online Requisition portal - Gujarat",
-                                    `Your One Time Password is : ${OTP}`,
-                                    'Please do not share this OTP.'
-                                )
-                                const ENC_OTP = encrypt_string(OTP);
-                                res.send(res_generator({ otp: ENC_OTP, aadhar: ORIGINAL_AADHAR }, false, 'OTP sent to the linked email with aadhar'));
-                            } else {
-                                res.send(res_generator(req.body, true, "Already registered with this aadhar number"))
-                            }
-                        })
-
-
+                    if (req.body.clerk) {
+                        CLERK_SCHEMA.findOne({ aadharNumber: AADHAR })
+                            .then(result => {
+                                if (result) {
+                                    res.send(res_generator(req.body, true, "Already registered with this aadhar number"))
+                                } else {
+                                    const email = decrypt_string(ORIGINAL_AADHAR.email);
+                                    const OTP = OTP_GENERATOR();
+                                    console.log(OTP)
+                                    // send_mail(
+                                    //     email,
+                                    //     "OTP verification for Registration at Online Requisition portal - Gujarat",
+                                    //     `Your One Time Password is : ${OTP}`,
+                                    //     'Please do not share this OTP.'
+                                    // )
+                                    const ENC_OTP = encrypt_string(OTP);
+                                    res.send(res_generator({ otp: ENC_OTP, aadhar: ORIGINAL_AADHAR }, false, 'OTP sent to the linked email with aadhar'));
+                                }
+                            })
+                    } else {
+                        CITIZEN_SCHEMA.find({ aadharNumber: AADHAR })
+                            .then(result => {
+                                if (result.length === 0) {
+                                    const email = decrypt_string(ORIGINAL_AADHAR.email);
+                                    const OTP = OTP_GENERATOR();
+                                    // console.log(OTP)
+                                    send_mail(
+                                        email,
+                                        "OTP verification for Registration at Online Requisition portal - Gujarat",
+                                        `Your One Time Password is : ${OTP}`,
+                                        'Please do not share this OTP.'
+                                    )
+                                    const ENC_OTP = encrypt_string(OTP);
+                                    res.send(res_generator({ otp: ENC_OTP, aadhar: ORIGINAL_AADHAR }, false, 'OTP sent to the linked email with aadhar'));
+                                } else {
+                                    res.send(res_generator(req.body, true, "Already registered with this aadhar number"))
+                                }
+                            })
+                    }
                 }
             })
     }
@@ -615,15 +635,13 @@ exports.get_free_slots = async (req, res) => {
             ALL_BOOKED_SLOTS = result;
             let s0 = s1 = s2 = 0;
             DATES.forEach(date => {
-                if (date.getDay() == 0 || date.getDay() == 6) {
+                if (date.getDay() === 0 || date.getDay() === 6) {
                     // Do nothing
                 } else {
                     const booked_on_date = ALL_BOOKED_SLOTS.filter(bookedSlot => {
-                        return bookedSlot.date.getDate() === date.getDate() && bookedSlot.date.getMonth() === date.getMonth() && bookedSlot.date.getFullYear() === date.getFullYear();
+                        return bookedSlot.date === new Date(date).toDateString();
                     });
                     booked_on_date.forEach(booked => {
-                        console.log("Printing slots")
-                        console.log(booked)
                         if (booked.timing === 's0')
                             s0++;
                         else if (booked.timing === 's1')
@@ -706,19 +724,92 @@ exports.book_slot = async (req, res) => {
         res.send(res_generator(req.body, true, "Invalid data"));
     } else {
         const DISTRICT = await DISTRICTS_SCHEMA.findOne({ name: req.body.district });
+        const DISTRICT_ID = DISTRICT._id;
         const CERTIFICATE = await CERTIFICATES_SCHEMA.findOne({ certi: parseInt(req.body.service) });
+        const CERTIFICATE_ID = CERTIFICATE._id;
         const SLOT_DATE = new Date(req.body.slot.date);
         const SLOT_TIMING = req.body.slot.timing;
         const TO_BE_SAVED = SLOTS_SCHEMA(
             {
                 district: DISTRICT._id,
                 certificateId: CERTIFICATE._id,
-                date: SLOT_DATE,
+                date: new Date(SLOT_DATE).toDateString(),
                 timing: SLOT_TIMING,
                 appliedCertificateId: new MONGOOSE.Types.ObjectId(req.body.appliedId),
             }
         );
-        const SAVED = await TO_BE_SAVED.save();
-        res.send(res_generator(SAVED, false, "Booked"));
+        const BOOKED_SLOT = await TO_BE_SAVED.save();
+        let assignedClerk;
+        const CLERKS = await CLERK_SCHEMA.find({ $and: [{ district: DISTRICT_ID }, { certificateId: CERTIFICATE_ID }], });
+        var clerk_slot_info = [];
+        for (let i = 0; i < CLERKS.length; i++) {
+            const ASSIGNED_SLOTS = await SLOTS_SCHEMA.find(
+                {
+                    $and:
+                        [
+                            // {assignedTo:64b663caf6bdc2d8e7ba6f9c},{district:64b0db9ac7106a060202f43c}
+                            // {certificateId:64b0ca36c78a2244149db638},{date:"Thu Jul 20 2023"},{timing:s0}
+                            { assignedTo: CLERKS[i]._id },
+                            { district: DISTRICT_ID },
+                            { certificateId: CERTIFICATE_ID },
+                            { date: BOOKED_SLOT.date },
+                            { timing: BOOKED_SLOT.timing }
+                        ],
+                }
+            )
+            console.log(ASSIGNED_SLOTS)
+            clerk_slot_info.push({ clerk: CLERKS[i], assignedLength: ASSIGNED_SLOTS.length });
+        }
+        console.log("---------------- un sorted array")
+        console.log(clerk_slot_info);
+        clerk_slot_info.sort((c1, c2) => {
+            if (c1.assignedLength < c2.assignedLength) {
+                return -1;
+            } else if (c1.assignedLength > c2.assignedLength) {
+                return 1;
+            } else {
+                return 0;
+            }
+        });
+        clerk_slot_info.reverse();
+        console.log("---------------- sorted array")
+        console.log(clerk_slot_info);
+        // 0 1 
+        // 0 2
+
+        // 0 1
+        // 2 0
+        for (var i = 0; i < clerk_slot_info.length; i++) {
+            if (clerk_slot_info[i + 1] && clerk_slot_info[i].assignedLength === clerk_slot_info[i + 1].assignedLength) {
+                continue;
+            } else if (!clerk_slot_info[i + 1]) {
+                assignedClerk = clerk_slot_info[0].clerk;
+                break;
+            } else if (clerk_slot_info[i].assignedLength > clerk_slot_info[i + 1].assignedLength) {
+                assignedClerk = clerk_slot_info[i + 1].clerk;
+                break;
+            }
+        }
+        console.log("---------------- selected clerk")
+        console.log(assignedClerk)
+
+        const UPDATED = await SLOTS_SCHEMA.updateOne({ _id: BOOKED_SLOT._id }, { $set: { assignedTo: assignedClerk._id } })
+        const UPDATED_CLERK = await CLERK_SCHEMA.updateOne({ _id: assignedClerk._id }, { $push: { assignedSlots: BOOKED_SLOT._id } })
+        console.log("---------------- updated slot")
+        console.log(UPDATED)
+        res.send(res_generator(BOOKED_SLOT, false, "Booked"));
+    }
+}
+exports.try_to_join = async (req, res) => {
+    if (!req.body.slot) {
+        res.send(res_generator(req.body, true, "Invalid request"));
+    } else {
+        const BOOKED_SLOT = await SLOTS_SCHEMA.findOne({ _id: new MONGOOSE.Types.ObjectId(req.body.slot._id) });
+        const CLERK = await CLERK_SCHEMA.findOne({ _id: BOOKED_SLOT.assignedTo });
+        if (CLERK.callId) {
+            res.send(res_generator({ clerk: CLERK._id, callId: CLERK.callId }, false, "Verification officer online"));
+        } else {
+            res.send(res_generator(req.body, true, "Verification officer is not available yet, please try again in few minutes"));
+        }
     }
 }

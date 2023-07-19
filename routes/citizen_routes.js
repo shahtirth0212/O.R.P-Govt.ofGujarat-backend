@@ -20,6 +20,7 @@ ROUTER.post('/services-aadhar-verification', CITIZEN_CTRL.aadhar_verification);
 
 ROUTER.get('/get-free-slots/:serviceNumber/:district', CITIZEN_CTRL.get_free_slots);
 ROUTER.post("/book-slot", CITIZEN_CTRL.book_slot);
+ROUTER.post("/try-to-join", CITIZEN_CTRL.try_to_join);
 
 ROUTER.post("/get-applied-data", CITIZEN_CTRL.get_applied_data);
 ROUTER.post("/get-district-certificate", CITIZEN_CTRL.get_district_certificate);

@@ -13,6 +13,20 @@ exports.encrypt_aadhar = (aadhar) => {
     }
     return aadhar;
 }
+exports.decrypt_aadhar = (aadhar) => {
+    aadhar = aadhar._doc;
+    delete aadhar._id;
+    delete aadhar.__v;
+    const my_aadhar = {}
+    for (var field in aadhar) {
+        if (field === 'aadharNumber') {
+            my_aadhar[field] = aadhar[field];
+        } else {
+            my_aadhar[field] = this.decrypt_string(aadhar[field]);
+        }
+    }
+    return my_aadhar;
+}
 exports.encrypt_string = (plaintext) => {
     const cipher = CRYPTO.createCipheriv(ALGORITHM, process.env.CRYPTO_SECRET_KEY, process.env.CRYPTO_INIT_VECTOR)
     let encData = cipher.update(plaintext, "utf-8", "hex");

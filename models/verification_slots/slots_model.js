@@ -10,7 +10,7 @@ const SLOTS_SCHEMA = MONGOOSE.Schema({
         required: true
     },
     date: {
-        type: Date,
+        type: String,
         required: true
     },
     timing: {
