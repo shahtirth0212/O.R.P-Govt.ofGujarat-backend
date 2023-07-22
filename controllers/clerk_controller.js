@@ -12,6 +12,9 @@ const { generate_token } = require("../helpers/services/token_services");
 const MONGOOSE = require("mongoose");
 const { decrypt_aadhar } = require("../helpers/ecry_dcry_aadhar");
 
+const BIRTH_FORM_SCHEMA = require("../models/certificate_forms/birth_certificate_form");
+const MARRIAGE_FORM_SCHEMA = require("../models/certificate_forms/marriage_certificate_form");
+const DEATH_FORM_SCHEMA = require("../models/certificate_forms/death_certificate_form");
 
 exports.clerk_register = async (req, res) => {
     const DATA = req.body;
@@ -132,5 +135,84 @@ exports.toggle_verification_status = async (req, res) => {
             res.send(res_generator(req.body, false, "Changed"));
 
         }
+    }
+}
+
+exports.form_verification = async (req, res) => {
+    // {
+    //     citizen_socket: 'Pe1-pS_dPr6iNgluAAAJ',
+    //     me: 'Tirth Rajeshkumar Shah',
+    //     clerk: '64b75a8bce28fa66d8af432b',
+    //     callId: 'DHwmQmb6yzaaGn5jAAAF',
+    //     slot: {
+    //       _id: '64b77cd1eea0f0595ea1004a',
+    //       district: '64b0db9ac7106a060202f43c',
+    //       certificateId: '64b0ca36c78a2244149db638',
+    //       date: 'Thu Jul 20 2023',
+    //       timing: 's0',
+    //       appliedCertificateId: '64b75e18d6665a2dc07cb7ef',
+    //       __v: 0,
+    //       assignedTo: '64b75a8bce28fa66d8af432b'
+    //     }
+    //   }
+    // "data": {
+    //     "_id": "64b75e18d6665a2dc07cb7ed",
+    //     "certificateId": "64b0ca36c78a2244149db638",
+    //     "dateOfDeath": "2023-07-17T18:30:00.000Z",
+    //     "placeOfDeath": "Spain",
+    //     "district": "64b0db9ac7106a060202f43c",
+    //     "personAadhar": "276067894614",
+    //     "personName": "Tirth Rajeshkumar Shah",
+    //     "deathType": "Natural",
+    //     "deathReason": "xyz",
+    //     "fillerAadhar": "102030405060",
+    //     "relation": "friend",
+    //     "hospitalDeclaration": "
+    //     "path": "",
+    //     "__v": 0,
+    //     "appliedCertificateId": "64b75e18d6665a2dc07cb7ef"
+    // }
+    if (!req.body.current) {
+        res.send(res_generator(req.body, true, "Invalid data"));
+    } else {
+        const CURRENT = req.body.current;
+        const SERVICE = await CERTIFICATES_SCHEMA.findOne({ _id: new MONGOOSE.Types.ObjectId(CURRENT.certificateId) });
+        let FORM;
+        switch (SERVICE.certi) {
+            case 0:
+                FORM = await BIRTH_FORM_SCHEMA.findOne({ appliedCertificateId: new MONGOOSE.Types.ObjectId(CURRENT.appliedCertificateId) });
+                FORM = FORM._doc;
+                let mother = await AADHAR_SCHEMA.findOne({ aadharNumber: FORM.motherAadhar });
+                let father = await AADHAR_SCHEMA.findOne({ aadharNumber: FORM.fatherAadhar });
+                mother = decrypt_aadhar(mother);
+                father = decrypt_aadhar(father);
+                FORM.mother = mother;
+                FORM.father = father;
+                break;
+            case 1:
+                FORM = await MARRIAGE_FORM_SCHEMA.findOne({ appliedCertificateId: new MONGOOSE.Types.ObjectId(CURRENT.appliedCertificateId) });
+                FORM = FORM._doc;
+                let husband = await AADHAR_SCHEMA.findOne({ aadharNumber: FORM.husbandAadhar });
+                let wife = await AADHAR_SCHEMA.findOne({ aadharNumber: FORM.wifeAadhar });
+                husband = decrypt_aadhar(husband);
+                wife = decrypt_aadhar(wife);
+                FORM.husband = husband;
+                FORM.wife = wife;
+                break;
+            case 2:
+                FORM = await DEATH_FORM_SCHEMA.findOne({ appliedCertificateId: new MONGOOSE.Types.ObjectId(CURRENT.appliedCertificateId) });
+                FORM = FORM._doc;
+                let person = await AADHAR_SCHEMA.findOne({ aadharNumber: FORM.personAadhar });
+                let filler = await AADHAR_SCHEMA.findOne({ aadharNumber: FORM.fillerAadhar });
+                person = decrypt_aadhar(person);
+                filler = decrypt_aadhar(filler);
+                FORM.person = person;
+                FORM.filler = filler;
+                break;
+            default:
+                res.send(res_generator(req.body, true, "Invalid data"));
+        }
+        res.send(res_generator(FORM, false, "Form fetched"));
+
     }
 }

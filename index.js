@@ -35,7 +35,29 @@ APP.use("/*", (req, res) => {
 
 
 IO.on("connect", socket => {
+    console.log("one connected")
     socket.emit("get_my_socket_id", socket.id)
+
+    socket.on('citizen-ready-to-join', (data) => {
+        socket.to(data.clerk).emit('citizen-ready-to-join', { citizen: data.citizen, slot: data.slot })
+    })
+
+    socket.on('other-verification-in-process', (citizen) => {
+        socket.to(citizen).emit('other-verification-in-progress');
+    });
+    socket.on("disconnect", () => {
+        socket.broadcast.emit("callEnded")
+    })
+
+    socket.on("callUser", (data) => {
+        socket.to(data.userToCall).emit("callUser", { signal: data.signalData, from: data.from })
+    })
+
+    socket.on("answerCall", (data) => {
+        console.log(data);
+        socket.to(data.to).emit("callAccepted", data.signal)
+    })
+
 })
 
 const PORT = process.env.PORT || 5000;
