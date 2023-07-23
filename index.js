@@ -9,6 +9,7 @@ const { Server } = require("socket.io");
 const ADMIN_ROUTES = require('./routes/admin_routes');
 const CITIZEN_ROUTES = require('./routes/citizen_routes');
 const CLERK_ROUTES = require("./routes/clerk_routes");
+const CLERK_SCHEMA = require('./models/authorities/clerk_model');
 
 const { res_generator } = require("./helpers/response_generator");
 
@@ -54,9 +55,11 @@ IO.on("connect", socket => {
     })
 
     socket.on("answerCall", (data) => {
-        console.log(data);
         socket.to(data.to).emit("callAccepted", data.signal)
     })
+    socket.on("clerk-disconnected", async (data) => {
+        const updated = await CLERK_SCHEMA.updateOne({ callId: socket.id }, { $set: { callId: null } });
+    });
 
 })
 
