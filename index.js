@@ -60,6 +60,9 @@ IO.on("connect", socket => {
     socket.on("clerk-disconnected", async (data) => {
         const updated = await CLERK_SCHEMA.updateOne({ callId: socket.id }, { $set: { callId: null } });
     });
+    socket.on('end-call', (data) => {
+        socket.to(data.citizen).emit('end-call');
+    })
 
 })
 

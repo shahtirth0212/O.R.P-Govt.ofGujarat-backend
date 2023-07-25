@@ -56,12 +56,12 @@ exports.authenticate_aadhar = (req, res) => {
                                     const email = decrypt_string(ORIGINAL_AADHAR.email);
                                     const OTP = OTP_GENERATOR();
                                     console.log(OTP)
-                                    // send_mail(
-                                    //     email,
-                                    //     "OTP verification for Registration at Online Requisition portal - Gujarat",
-                                    //     `Your One Time Password is : ${OTP}`,
-                                    //     'Please do not share this OTP.'
-                                    // )
+                                    send_mail(
+                                        email,
+                                        "OTP verification for Registration at Online Requisition portal - Gujarat",
+                                        `Your One Time Password is : ${OTP}`,
+                                        'Please do not share this OTP.'
+                                    )
                                     const ENC_OTP = encrypt_string(OTP);
                                     res.send(res_generator({ otp: ENC_OTP, aadhar: ORIGINAL_AADHAR }, false, 'OTP sent to the linked email with aadhar'));
                                 }
@@ -575,12 +575,12 @@ exports.aadhar_verification = (req, res) => {
                     const email = decrypt_string(ORIGINAL_AADHAR.email);
                     const OTP = OTP_GENERATOR();
                     console.log(OTP)
-                    // send_mail(
-                    //     email,
-                    //     "OTP verification for Registration at Online Requisition portal - Gujarat",
-                    //     `Your One Time Password is : ${OTP}`,
-                    //     'Please do not share this OTP.'
-                    // )
+                    send_mail(
+                        email,
+                        "OTP verification for Registration at Online Requisition portal - Gujarat",
+                        `Your One Time Password is : ${OTP}`,
+                        'Please do not share this OTP.'
+                    )
                     const ENC_OTP = encrypt_string(OTP);
                     res.send(res_generator({ otp: ENC_OTP, aadhar: ORIGINAL_AADHAR }, false, 'OTP sent to the linked email with aadhar'));
                 }

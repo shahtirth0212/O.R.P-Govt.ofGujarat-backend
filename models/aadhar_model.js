@@ -5,6 +5,10 @@ const AADHAR_SCHEMA = MONGOOSE.Schema({
         type: String,
         required: true,
     },
+    photo: {
+        type: String,
+        required: true
+    },
     firstName: {
         type: String,
         required: true,

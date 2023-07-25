@@ -99,12 +99,14 @@ exports.add_aadhar = (req, res) => {
         || !req.body.state
         || !req.body.mobile
         || !req.body.email
+        || !req.body.photo
     ) {
         res.send(res_generator(req.body, true, 'Insufficient data provided'));
     }
     else {
         const data = {
             aadharNumber: req.body.aadharNumber,
+            photo: req.body.photo,
             firstName: req.body.firstName,
             middleName: req.body.middleName,
             lastName: req.body.lastName,
