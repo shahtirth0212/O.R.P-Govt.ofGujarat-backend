@@ -216,3 +216,13 @@ exports.form_verification = async (req, res) => {
 
     }
 }
+exports.set_verification_status = async (req, res) => {
+    const data = req.body;
+    if (data.ans) {
+        const updated = await APPLIED_CERTIFICATE_SCHEMA.updateOne({ _id: new MONGOOSE.Types.ObjectId(data.appliedCertificateId) }, { $set: { verified: true } });
+        res.send(res_generator(data, false, "Set as verified"));
+    } else {
+        const updated = await APPLIED_CERTIFICATE_SCHEMA.updateOne({ _id: new MONGOOSE.Types.ObjectId(data.appliedCertificateId) }, { $set: { verified: false, objection: data.objection } });
+        res.send(res_generator(data, false, "Set as Rejected"));
+    }
+}

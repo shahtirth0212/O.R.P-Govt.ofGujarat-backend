@@ -25,5 +25,6 @@ ROUTER.post("/try-to-join", CITIZEN_CTRL.try_to_join);
 ROUTER.post("/get-applied-data", CITIZEN_CTRL.get_applied_data);
 ROUTER.post("/get-district-certificate", CITIZEN_CTRL.get_district_certificate);
 
+ROUTER.post("/set-joined", CITIZEN_CTRL.set_joined);
 module.exports = ROUTER;
 

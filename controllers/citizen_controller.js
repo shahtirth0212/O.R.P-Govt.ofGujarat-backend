@@ -813,3 +813,7 @@ exports.try_to_join = async (req, res) => {
         }
     }
 }
+exports.set_joined = async (req, res) => {
+    const updated = await APPLIED_CERTIFICATE_SCHEMA.updateOne({ _id: new MONGOOSE.Types.ObjectId(req.body.appliedCertificateId) }, { $set: { joined: true } });
+    res.send(res_generator(updated, false, "Status updated"))
+}

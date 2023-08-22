@@ -35,6 +35,14 @@ const APPLIED_CERTIFICATE_SCHEMA = MONGOOSE.Schema({
         type: MONGOOSE.Types.ObjectId,
         required: true
     },
+    joined: {
+        type: Boolean,
+        default: false
+    },
+    objection: {
+        type: String,
+        default: ""
+    },
     holders: {
         // [
         //     { name: abc, aadhar: 1234 },
